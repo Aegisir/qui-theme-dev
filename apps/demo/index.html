@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f0f0f2" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f0f12" media="(prefers-color-scheme: dark)" />
+    <link rel="icon" href="./favicon.ico" />
+    <title>Web 组件库</title>
+    <style>
+      :root { --bg_bottom_standard: #f0f0f2; color-scheme: light dark; }
+      html, body { min-height: 100vh; background-color: var(--bg_bottom_standard); }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg_bottom_standard: #0f0f12; }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

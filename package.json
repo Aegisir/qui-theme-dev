@@ -1,0 +1,25 @@
+{
+  "name": "qui-theme",
+  "private": true,
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "dev": "pnpm --filter @qui-theme/demo dev",
+    "build": "pnpm --filter @qui-theme/ui build && pnpm --filter @qui-theme/demo build",
+    "typecheck": "pnpm --filter @qui-theme/ui typecheck && pnpm --filter @qui-theme/demo typecheck",
+    "capture:reference": "node scripts/capture-reference.mjs",
+    "capture:states": "node scripts/capture-states.mjs",
+    "capture:state-assets": "node scripts/capture-state-assets.mjs",
+    "prepare:reference": "node scripts/prepare-reference.mjs",
+    "verify:replica": "node scripts/verify-replica.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "pixelmatch": "^7.2.0",
+    "playwright": "1.62.1",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.3",
+    "vue-tsc": "^3.3.12"
+  }
+}
