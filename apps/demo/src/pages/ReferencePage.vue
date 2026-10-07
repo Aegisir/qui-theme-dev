@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { QuiReplicaRenderer, type ReplicaTarget } from '@qui-theme/ui'
 import { entries, routeFor } from '../catalog'
-import { pageVariant, loadMarkup, loadInteractions, loadMotions, setStyles } from '../replica/resources'
+import { pageVariant, loadMarkup, loadInteractions, loadMotions, prepareStyles } from '../replica/resources'
 import type { InteractionMap, InteractionState, MotionManifest, BlankPageSettings, ScrollState } from '../replica/types'
 import type { createMotion } from '../replica/motion'
 import type { createControllers } from '../replica/controllers'
@@ -26,6 +26,7 @@ let controllers: ReturnType<typeof createControllers> | undefined
 let gestures: ReturnType<typeof createGestures> | undefined
 let mediaQuery: MediaQueryList | undefined
 let loading = 0
+let rendered = 0
 let request: AbortController | undefined
 let ready: Promise<void> | undefined
 let readyFailed = false
@@ -100,15 +101,17 @@ async function loadPage() {
   const page = pageVariant(slug, device)
   error.value = ''; busy.value = true; readyFailed = false; ready = undefined
   blank.index = 0; blank.settings = [true, true, true, true]
-  activeInteraction = ''; authorizationReturnInteraction = ''; portalMarkup.value = ''; markup.value = ''
+  activeInteraction = ''; authorizationReturnInteraction = ''; portalMarkup.value = ''
   interactions.value = {}; motions.value = { routes: {} }
-  document.title = entries.find(entry => entry.slug === slug)?.title ?? 'Web 组件库'
   if (/Windows/i.test(navigator.userAgent)) document.documentElement.classList.add('is-win')
   document.body.style.background = 'var(--bg_bottom_standard, #f5f6fa)'
   baseBodyStyle.value = document.body.getAttribute('style') ?? ''
   try {
-    const bodyReady = Promise.all([loadMarkup(page, signal), setStyles(page.styles, signal)]).then(async ([html]) => {
+    const bodyReady = Promise.all([loadMarkup(page, signal), prepareStyles(page.styles, signal)]).then(async ([html, commitStyles]) => {
       if (version !== loading) return
+      // Commit CSS and markup before the next paint, keeping the previous page intact while loading.
+      commitStyles(); rendered = version
+      document.title = entries.find(entry => entry.slug === slug)?.title ?? 'Web 组件库'
       baseMarkup.value = html; markup.value = html; busy.value = false
       await nextTick()
     })
@@ -116,7 +119,10 @@ async function loadPage() {
     await bodyReady
     await runtime
   } catch (cause) {
-    if (version === loading && !signal.aborted) { busy.value = false; error.value = cause instanceof Error ? cause.message : '加载失败，请重试' }
+    if (version === loading && !signal.aborted) {
+      if (busy.value) request?.abort()
+      busy.value = false; error.value = cause instanceof Error ? cause.message : '加载失败，请重试'
+    }
   }
 }
 
@@ -257,6 +263,7 @@ async function onClick(target: ReplicaTarget) {
   const { element, buttonIndex, controlIndex } = target
   const label = element.closest('.q-list')?.querySelector('.q-list__title-txt')?.textContent
   if (label && navigate(label)) return
+  if (rendered !== loading) return
   const version = loading
   try { await ensureReady() } catch { return }
   if (version !== loading || !element.isConnected) return

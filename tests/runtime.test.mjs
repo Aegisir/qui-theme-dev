@@ -116,6 +116,90 @@ test('gallery supports subdirectory, keyboard navigation and route cancellation'
     assert.deepEqual(errors, [])
   } finally { await page.close() }
 })
+for (const colorScheme of ['light', 'dark']) for (const slower of ['html', 'css']) {
+  test(`navigation preserves styled frames with delayed ${slower} in ${colorScheme} mode`, async () => {
+    const page = await chrome.newPage({ viewport: { width: 390, height: 844 }, colorScheme })
+    const manifest = JSON.parse(await readFile(resolve(root, 'apps/demo/.cache/manifest.json')))
+    const target = manifest.routes.button.mobile
+    const css = target.styles.find(path => !manifest.routes.index.mobile.styles.includes(path))
+    let release
+    const gate = new Promise(resolve => { release = resolve })
+    await page.route('**/' + target.html, async route => { if (slower === 'html') await gate; await route.continue() })
+    await page.route('**/' + css, async route => {
+      if (slower === 'css') await gate
+      await route.fulfill({ contentType: 'text/css', body: await readFile(resolve(root, 'apps/demo/dist', css), 'utf8') + '\nbody { --navigation-probe: ready; }' })
+    })
+    try {
+      await page.goto(gallery.url + '#/index'); await page.waitForLoadState('networkidle')
+      const before = await page.locator('.container').innerHTML()
+      await page.evaluate(() => {
+        const sheets = [...document.querySelectorAll('link[data-reference-shared]')].map(link => [link, link.sheet])
+        const background = getComputedStyle(document.body).backgroundColor
+        window.navigationIssues = []
+        let running = true
+        window.stopNavigationProbe = () => { running = false; return window.navigationIssues }
+        const sample = () => {
+          if (!document.querySelector('.container')?.children.length) window.navigationIssues.push('empty content')
+          if (sheets.some(([link, sheet]) => link.sheet !== sheet)) window.navigationIssues.push('shared stylesheet detached')
+          if (getComputedStyle(document.body).backgroundColor !== background) window.navigationIssues.push('background changed')
+          if (running) requestAnimationFrame(sample)
+        }
+        requestAnimationFrame(sample)
+      })
+      const fast = page.waitForResponse(response => response.url().endsWith(slower === 'html' ? css : target.html))
+      await page.getByRole('link', { name: '按钮 Button', exact: true }).click()
+      await fast
+      await page.waitForFunction(() => document.querySelector('.container')?.getAttribute('aria-busy') === 'true')
+      assert.equal(await page.locator('.container').evaluate((element, html) => element.innerHTML === html, before), true, 'keep the previous page while loading')
+      if (slower === 'html') {
+        await page.waitForFunction(css => [...document.querySelectorAll('link')].some(link => link.href.endsWith(css) && link.sheet), css)
+        assert.equal(await page.locator('body').evaluate(body => getComputedStyle(body).getPropertyValue('--navigation-probe').trim()), '', 'pending CSS must not affect the previous page')
+      }
+      release()
+      await page.waitForSelector('.button-demo')
+      await page.waitForFunction(() => document.querySelector('.container')?.getAttribute('aria-busy') === 'false')
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      assert.equal(await page.locator('body').evaluate(body => getComputedStyle(body).getPropertyValue('--navigation-probe').trim()), 'ready')
+      assert.deepEqual(await page.evaluate(() => [...new Set(window.stopNavigationProbe())]), [])
+    } finally { release(); await page.close() }
+  })
+}
+
+for (const failure of ['html', 'css']) test(`failed ${failure} and canceled navigation retain the page and discard pending styles`, async () => {
+  const page = await chrome.newPage({ viewport: { width: 390, height: 844 }, colorScheme: 'dark' })
+  const manifest = JSON.parse(await readFile(resolve(root, 'apps/demo/.cache/manifest.json')))
+  const target = manifest.routes.button.mobile
+  const failedPath = failure === 'html' ? target.html : target.styles.find(path => !manifest.routes.index.mobile.styles.includes(path))
+  let attempts = 0, release, pending
+  const gate = new Promise(resolve => { release = resolve })
+  const blocked = new Promise(resolve => { pending = resolve })
+  await page.route('**/' + failedPath, async route => {
+    attempts++
+    if (attempts === 1) await route.fulfill({ status: 503, body: 'retry' })
+    else if (attempts === 2) { pending(); await gate; await route.continue() }
+    else await route.continue()
+  })
+  try {
+    await page.goto(gallery.url + '#/index'); await page.waitForLoadState('networkidle')
+    const before = await page.locator('.container').innerHTML()
+    await page.getByRole('link', { name: '按钮 Button', exact: true }).click()
+    await page.waitForSelector('[role="alert"]')
+    assert.equal(await page.locator('.container').evaluate((element, html) => element.innerHTML === html, before), true)
+    await page.getByRole('button', { name: '重试', exact: true }).click()
+    await blocked
+    await page.getByRole('link', { name: '图标 Icon', exact: true }).click()
+    await page.waitForSelector('.qui-icon_item')
+    release()
+    await page.waitForLoadState('networkidle')
+    const styles = await page.locator('link[data-reference-style]').evaluateAll(links => links.map(link => ({ path: new URL(link.href).pathname.split('/gallery/')[1], loaded: !!link.sheet, media: link.media })))
+    assert.deepEqual(styles.map(style => style.path), manifest.routes.icon.mobile.styles)
+    assert.ok(styles.every(style => style.loaded && style.media !== 'not all'))
+    await page.evaluate(() => { location.hash = '#/button' })
+    await page.waitForSelector('.button-demo')
+    assert.equal(attempts, 3)
+  } finally { release(); await page.close() }
+})
+
 test('failed interaction request can retry without losing the first click', async () => {
   const page = await chrome.newPage()
   const manifest = JSON.parse(await readFile(resolve(root, 'apps/demo/.cache/manifest.json')))

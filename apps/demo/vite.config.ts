@@ -21,8 +21,7 @@ export default defineConfig({
           for (const path of page.styles) {
             if (snapshot.commonStyles.includes(path)) continue;
             const href = new URL('./' + path, document.baseURI).href;
-            if ([...document.querySelectorAll('link[data-reference-style]')].some(link => link.href === href)) continue;
-            const link = document.createElement('link'); link.rel = 'stylesheet'; link.href = href; link.dataset.referenceStyle = '';
+            const link = document.createElement('link'); link.rel = 'preload'; link.as = 'style'; link.href = href;
             document.head.append(link);
           }
         `

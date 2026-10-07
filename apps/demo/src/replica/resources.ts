@@ -23,13 +23,15 @@ export async function loadInteractions(page: PageVariant, signal: AbortSignal): 
 export async function loadMotions(page: PageVariant, signal: AbortSignal): Promise<MotionPhaseMap> {
   return page.motion ? (await request(page.motion, signal)).json() : {}
 }
-export async function setStyles(styles: string[], signal: AbortSignal) {
+export async function prepareStyles(styles: string[], signal: AbortSignal) {
+  signal.throwIfAborted()
   const previous = [...document.querySelectorAll<HTMLLinkElement>('link[data-reference-style]')]
-  const wanted = new Set(styles.map(url))
+  const hrefs = styles.map(url)
   const added: HTMLLinkElement[] = []
+  const discard = () => { signal.removeEventListener('abort', discard); added.forEach(link => link.remove()) }
+  signal.addEventListener('abort', discard, { once: true })
   try {
-    await Promise.all(styles.map(path => {
-      const href = url(path)
+    await Promise.all(hrefs.map((href, index) => {
       const existing = previous.find(link => link.href === href)
       if (existing?.sheet) return Promise.resolve()
       return new Promise<void>((resolve, reject) => {
@@ -37,18 +39,23 @@ export async function setStyles(styles: string[], signal: AbortSignal) {
         const cleanup = () => { link.onload = null; link.onerror = null; signal.removeEventListener('abort', abort) }
         const abort = () => { cleanup(); reject(signal.reason) }
         link.onload = () => { cleanup(); resolve() }
-        link.onerror = () => { cleanup(); reject(new Error(`Stylesheet failed: ${path}`)) }
+        link.onerror = () => { cleanup(); reject(new Error(`Stylesheet failed: ${styles[index]}`)) }
         signal.addEventListener('abort', abort, { once: true })
         if (signal.aborted) return abort()
         if (!existing) {
-          link.rel = 'stylesheet'; link.href = href; link.dataset.referenceStyle = ''; added.push(link); document.head.append(link)
+          link.rel = 'stylesheet'; link.href = href; link.media = 'not all'; link.fetchPriority = 'high'; link.dataset.referenceStyle = ''
+          added.push(link)
+          // Moving an active link detaches its stylesheet; insert only new links in cascade order.
+          document.head.insertBefore(link, previous.find(item => hrefs.slice(index + 1).includes(item.href)) ?? null)
         }
       })
     }))
     signal.throwIfAborted()
-    previous.filter(link => !wanted.has(link.href) && !link.hasAttribute('data-reference-shared')).forEach(link => link.remove())
-    const links = [...document.querySelectorAll<HTMLLinkElement>('link[data-reference-style]')]
-    const ordered = styles.map(path => links.find(link => link.href === url(path))!)
-    if (ordered.some((link, index) => link !== links[index])) ordered.forEach(link => document.head.append(link))
-  } catch (error) { added.forEach(link => link.remove()); throw error }
+    return () => {
+      signal.throwIfAborted()
+      signal.removeEventListener('abort', discard)
+      added.forEach(link => { link.media = 'all' })
+      previous.filter(link => !hrefs.includes(link.href) && !link.hasAttribute('data-reference-shared')).forEach(link => link.remove())
+    }
+  } catch (error) { discard(); throw error }
 }
