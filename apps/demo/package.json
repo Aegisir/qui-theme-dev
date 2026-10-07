@@ -3,9 +3,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
-    "build": "vite build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json"
+    "dev": "node ../../scripts/prepare-reference.mjs && vite --host 127.0.0.1",
+    "build": "node ../../scripts/prepare-reference.mjs && vite build",
+    "typecheck": "node ../../scripts/prepare-reference.mjs && vue-tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "@qui-theme/ui": "workspace:*",

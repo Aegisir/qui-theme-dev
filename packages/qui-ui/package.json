@@ -35,12 +35,21 @@
       "types": "./dist/types/assets.d.ts",
       "import": "./dist/assets.js"
     },
-    "./style.css": "./dist/ui.css"
+    "./style.css": "./dist/ui.css",
+    "./regions": {
+      "types": "./dist/types/regions.d.ts",
+      "import": "./dist/regions.js"
+    }
   },
-  "files": ["dist", "README.md"],
-  "sideEffects": ["**/*.css"],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
-    "build": "vite build && vue-tsc --emitDeclarationOnly -p tsconfig.build.json",
+    "build": "vite build && vue-tsc --emitDeclarationOnly -p tsconfig.build.json && node ../../scripts/prepare-declarations.mjs",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {

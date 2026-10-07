@@ -1,6 +1,5 @@
 node_modules/
 **/dist/
 *.tsbuildinfo
-/artifacts/local/
-/scripts/
 /artifacts/
+**/.cache/

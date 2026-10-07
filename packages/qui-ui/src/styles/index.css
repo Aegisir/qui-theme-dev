@@ -19,29 +19,6 @@ button, input { font: inherit; }
 button { color: inherit; }
 button:focus-visible, input:focus-visible { outline: 2px solid var(--brand_standard, #09f); outline-offset: 2px; }
 .qui-overlay-open { overflow: hidden; }
-.qui-demo-shell { min-height: 100vh; background: var(--bg_bottom_standard, #f0f0f2); }
-.qui-demo-page { width: min(100%, 480px); min-height: 100vh; margin: 0 auto; padding-bottom: max(20px, env(safe-area-inset-bottom)); background: var(--bg_bottom_standard, #f0f0f2); }
-.qui-demo-index { padding: 1px 16px 24px; }
-.qui-demo-group { margin: 17px 0 26px; }
-.qui-demo-group__title { margin: 0 16px 10px; font-size: 16px; line-height: 20px; font-weight: 600; }
-.qui-demo-group__card { overflow: hidden; border-radius: 12px; background: var(--fill_light_primary, #fff); }
-.qui-demo-link { display: flex; width: 100%; min-height: 55px; align-items: center; justify-content: space-between; padding: 0 16px; border: 0; border-bottom: 1px solid var(--border_light, rgba(0,0,0,.05)); background: transparent; text-align: left; text-decoration: none; cursor: pointer; }
-.qui-demo-link:last-child { border-bottom: 0; }
-.qui-demo-link__label { color: var(--text_primary, #1a1a1a); font-size: 16px; }
-.qui-demo-link__arrow { color: var(--icon_secondary, #929296); font-size: 25px; font-weight: 300; line-height: 1; }
-.qui-demo-section { padding: 16px; }
-.qui-demo-section__heading { margin: 0; padding: 0 0 14px; color: var(--text_primary, #1a1a1a); font-size: 16px; font-weight: 600; line-height: 20px; }
-.qui-demo-section__subheading { margin: 0 0 8px; font-size: 14px; font-weight: 600; line-height: 20px; }
-.qui-demo-section__description { margin: -5px 0 14px; color: var(--text_secondary, #8c8c8c); font-size: 14px; line-height: 20px; }
-.qui-demo-section__content { display: grid; gap: 16px; }
-.qui-demo-row { display: flex; align-items: center; gap: 8px; }
-.qui-demo-row > * { min-width: 0; }
-.qui-demo-row.is-between { justify-content: space-between; }
-.qui-demo-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.qui-demo-grid.is-three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-.qui-demo-note { color: var(--text_secondary, #888); line-height: 20px; }
-.qui-demo-card { overflow: hidden; border-radius: 12px; padding: 16px; background: var(--fill_light_secondary, #fff); }
-.qui-demo-spacer { height: 8px; }
 
 .qui-button { position: relative; display: inline-flex; min-width: 72px; align-items: center; justify-content: center; gap: 8px; overflow: hidden; border: 1px solid transparent; border-radius: 6px; font-weight: 500; cursor: pointer; transition: opacity .15s ease, background-color .15s ease; }
 .qui-button.is-block { width: 100%; }
@@ -148,8 +125,6 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--brand_stand
 .qui-notification__copy span { overflow: hidden; color: var(--text_secondary, #888); text-overflow: ellipsis; white-space: nowrap; }
 .qui-notification button { border: 0; color: var(--text_link, #214ca5); background: none; cursor: pointer; }
 .qui-notification .qui-notification__close { padding: 0 2px; color: var(--text_secondary, #888); font-size: 20px; }
-.qui-flex-demo, .qui-demo-slip { flex: 1; padding: 14px 8px; border-radius: 6px; background: var(--fill_standard_primary, #f3f3f4); text-align: center; }
-.qui-demo-popup { display: grid; min-width: 240px; gap: 18px; padding: 24px; text-align: center; }
 .qui-swiper-demo__image { display: block; width: 100%; height: 180px; object-fit: cover; }
 .qui-copy-toast { position: fixed; z-index: 1300; bottom: max(28px, env(safe-area-inset-bottom)); left: 50%; padding: 10px 16px; border-radius: 8px; color: #fff; background: #333d; transform: translateX(-50%); }
 .qui-tabs { display: flex; min-height: 44px; align-items: center; gap: 24px; border-bottom: 1px solid var(--border_light, #eee); }
@@ -263,15 +238,3 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--brand_stand
 .qui-indexes__bar button { padding: 1px; border: 0; color: var(--brand_standard, #09f); background: none; font-size: 9px; }
 .qui-icon { display: inline-flex; width: 1em; height: 1em; align-items: center; justify-content: center; color: inherit; vertical-align: middle; }
 .qui-icon svg { display: block; width: 1em; height: 1em; }
-.qui-icon-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.qui-icon-card { display: grid; min-width: 0; min-height: 86px; align-content: center; justify-items: center; gap: 8px; padding: 8px 4px; border-radius: 8px; background: var(--fill_light_primary, #fff); text-align: center; }
-.qui-icon-card span:last-child { width: 100%; overflow: hidden; color: var(--text_secondary, #888); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-.qui-token-card { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border_light, #eee); }
-.qui-token-card__swatch { width: 30px; height: 30px; border: 1px solid var(--border_light, #eee); border-radius: 50%; }
-.qui-token-card__name { overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12px; }
-.qui-token-card__value { margin-top: 3px; color: var(--text_secondary, #888); font-size: 11px; }
-
-@media (min-width: 600px) {
-  .qui-demo-shell { min-height: 100vh; padding: 0 0 24px; }
-  .qui-demo-page { min-height: 100vh; box-shadow: 0 0 0 1px rgba(0,0,0,.03); }
-}

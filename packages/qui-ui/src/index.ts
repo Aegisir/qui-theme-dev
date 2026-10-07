@@ -4,7 +4,7 @@ import * as overlays from './components/overlays'
 import * as business from './components/business'
 import QuiReplicaRenderer from './components/ReplicaRenderer.vue'
 
-const QuiIcon = defineAsyncComponent(() => import('./components/Icon.vue'))
+const QuiIcon = /* @__PURE__ */ defineAsyncComponent(() => import('./components/Icon.vue'))
 
 export * from './types'
 export * from './components/primitives'
@@ -15,10 +15,9 @@ export { default as QuiOverlayShell } from './components/OverlayShell.vue'
 export { QuiReplicaRenderer }
 export { default as quiTokens } from './data/tokens.json'
 
-const components = { ...primitives, ...overlays, ...business, QuiIcon, QuiReplicaRenderer }
 export const QuiUI: Plugin = {
   install(app: App) {
-    Object.entries(components).forEach(([name, component]) => app.component(name, component))
+    Object.entries({ ...primitives, ...overlays, ...business, QuiIcon, QuiReplicaRenderer }).forEach(([name, component]) => app.component(name, component))
   },
 }
 
