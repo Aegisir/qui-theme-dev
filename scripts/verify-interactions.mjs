@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { PNG } from 'pngjs'
 import pixelmatch from 'pixelmatch'
-import { browser, serve, artifacts } from '../tests/support.mjs'
+import { browser, serve, setTheme, artifacts } from '../tests/support.mjs'
 
 const chrome = await browser()
 const original = await serve(resolve(artifacts, 'original'))
@@ -22,6 +22,7 @@ try {
         await page.goto(server.url + '#/' + slug)
         await page.waitForSelector('.container button')
         await page.waitForLoadState('networkidle')
+        await setTheme(page, colorScheme === 'dark' ? 'default-dark' : 'default', false)
         await page.locator('.container button').first().click()
         await page.waitForSelector('.qui-replica-portals > *', { state: 'attached' })
         await page.waitForTimeout(60)

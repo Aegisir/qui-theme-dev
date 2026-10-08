@@ -3,7 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { PNG } from 'pngjs'
 import pixelmatch from 'pixelmatch'
-import { root, artifacts, routes, browser, serve } from '../tests/support.mjs'
+import { root, artifacts, routes, browser, serve, setTheme } from '../tests/support.mjs'
 
 const capture = process.argv.includes('--capture')
 const directory = resolve(artifacts, capture ? 'baseline' : 'current')
@@ -25,6 +25,7 @@ try {
       await page.goto(`${server.url}#/${slug}?m`)
       await page.waitForFunction(() => document.querySelector('#app .container')?.children.length && document.querySelector('#app .container')?.getAttribute('aria-busy') !== 'true')
       await page.waitForLoadState('networkidle')
+      await setTheme(page, colorScheme === 'dark' ? 'default-dark' : 'default', false)
       const name = `${slug}-${width}-${colorScheme}.png`
       const image = await page.screenshot({ animations: 'disabled' })
       await writeFile(resolve(directory, name), image)

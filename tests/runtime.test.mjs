@@ -4,7 +4,7 @@ import { build } from 'vite'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { createRequire } from 'node:module'
-import { browser, serve, root, artifacts } from './support.mjs'
+import { browser, serve, setTheme, root, artifacts } from './support.mjs'
 
 let chrome, fixture, gallery
 before(async () => {
@@ -116,6 +116,41 @@ test('gallery supports subdirectory, keyboard navigation and route cancellation'
     assert.deepEqual(errors, [])
   } finally { await page.close() }
 })
+for (const colorScheme of ['light', 'dark']) test(`theme messages match the reference under ${colorScheme} system preference`, async () => {
+  const page = await chrome.newPage({ viewport: { width: 390, height: 844 }, colorScheme })
+  const background = () => page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor)
+  const saved = () => page.evaluate(() => localStorage.getItem('qui_themeId'))
+  try {
+    await page.goto(gallery.url + '#/index'); await page.waitForLoadState('networkidle')
+    assert.equal(await background(), 'rgb(240, 240, 242)', 'default theme stays light')
+    await page.evaluate(() => document.body.classList.add('unrelated'))
+    await setTheme(page, 'dark')
+    assert.equal(await background(), 'rgb(15, 15, 18)')
+    assert.equal(await saved(), 'dark')
+    await setTheme(page, 'default-white', false)
+    assert.equal(await background(), 'rgb(245, 245, 245)')
+    assert.equal(await saved(), 'dark', 'temporary selection keeps the saved choice')
+    await setTheme(page, 'default-dark', false)
+    assert.equal(await background(), 'rgb(15, 15, 18)')
+    assert.equal(await page.locator('html').evaluate(html => getComputedStyle(html).backgroundColor), 'rgba(0, 0, 0, 0)', 'the canvas uses the themed body background, as on the reference')
+    assert.equal(await page.locator('html').evaluate(html => getComputedStyle(html).colorScheme), 'normal', 'theme messages preserve the reference native-control scheme')
+    await page.evaluate(() => { location.hash = '#/dialog' })
+    await page.waitForFunction(() => document.title === '弹窗 Dialog' && document.querySelector('.container button'))
+    await page.locator('.container button').first().click()
+    await page.waitForSelector('.qui-replica-portals .q-dialog__box')
+    assert.equal(await page.locator('.qui-replica-portals .q-dialog__box').evaluate(box => getComputedStyle(box).backgroundColor), 'rgb(47, 48, 51)')
+    await setTheme(page, 'default', false)
+    assert.equal(await background(), 'rgb(240, 240, 242)')
+    assert.equal(await page.locator('.qui-replica-portals .q-dialog__box').evaluate(box => getComputedStyle(box).backgroundColor), 'rgb(255, 255, 255)')
+    assert.equal(await saved(), null)
+    assert.equal(await page.locator('body').getAttribute('class'), 'unrelated')
+    await setTheme(page, 'dark')
+    await page.reload(); await page.waitForLoadState('networkidle')
+    assert.equal(await background(), 'rgb(240, 240, 242)', 'demo reload returns to default, as on the reference')
+    assert.equal(await saved(), 'dark')
+  } finally { await page.close() }
+})
+
 for (const colorScheme of ['light', 'dark']) for (const slower of ['html', 'css']) {
   test(`navigation preserves styled frames with delayed ${slower} in ${colorScheme} mode`, async () => {
     const page = await chrome.newPage({ viewport: { width: 390, height: 844 }, colorScheme })
@@ -131,6 +166,7 @@ for (const colorScheme of ['light', 'dark']) for (const slower of ['html', 'css'
     })
     try {
       await page.goto(gallery.url + '#/index'); await page.waitForLoadState('networkidle')
+      await setTheme(page, colorScheme === 'dark' ? 'default-dark' : 'default', false)
       const before = await page.locator('.container').innerHTML()
       await page.evaluate(() => {
         const sheets = [...document.querySelectorAll('link[data-reference-shared]')].map(link => [link, link.sheet])
@@ -181,6 +217,7 @@ for (const failure of ['html', 'css']) test(`failed ${failure} and canceled navi
   })
   try {
     await page.goto(gallery.url + '#/index'); await page.waitForLoadState('networkidle')
+    await setTheme(page, 'default-dark', false)
     const before = await page.locator('.container').innerHTML()
     await page.getByRole('link', { name: '按钮 Button', exact: true }).click()
     await page.waitForSelector('[role="alert"]')
@@ -279,6 +316,7 @@ test('mouse and touch swipes work and canceled gestures cannot update the next r
       await page.waitForFunction(before => document.querySelector('.q-swiper__list').style.transform !== before, before)
     }
     await page.goto(gallery.url + '#/swiper'); await page.waitForLoadState('networkidle')
+    await page.waitForFunction(() => document.title === '轮播 Swiper' && document.querySelector('.q-swiper')?.getBoundingClientRect().height)
     const box = await page.locator('.q-swiper').first().boundingBox()
     await page.mouse.move(280, box.y + 20); await page.mouse.down(); await page.mouse.move(100, box.y + 20)
     await page.evaluate(() => { location.hash = '#/button' }); await page.mouse.up()

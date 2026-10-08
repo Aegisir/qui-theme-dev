@@ -11,6 +11,12 @@ export async function browser() {
   try { return await chromium.launch({ headless: true }) }
   catch { return chromium.launch({ channel: 'chrome', headless: true }) }
 }
+export async function setTheme(page, themeId, isSave) {
+  await page.evaluate(data => new Promise(resolve => {
+    window.addEventListener('message', () => resolve(), { once: true })
+    window.postMessage(data, location.origin)
+  }), { themeId, isSave })
+}
 export async function serve(directory, prefix = '/') {
   const base = resolve(directory)
   const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.ttf': 'font/ttf' }
