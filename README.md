@@ -26,6 +26,8 @@ createApp(App).mount('#app')
 
 构建产物位于 `packages/qui-ui/dist` 和 `apps/demo/dist`。应用运行时不请求腾讯 CDN。
 
+首页「通用」分组顶部提供深色模式开关。默认实时跟随系统；手动切换后，本次会话保留选择，刷新恢复跟随系统。兼容原站 `themeId` 消息及 `isSave` 存储规则；外部主题消息也会优先于系统设置。
+
 原始快照位于 `apps/demo/reference`；构建与类型检查会自动运行确定性的预处理，生成去重后的 `.cache/public`。部署时上传整个 `apps/demo/dist`，服务器对 HTML/CSS/JS/JSON 启用 gzip 或 Brotli；不需要为 `.gz` URL 配置特殊响应头。默认相对 base 支持子目录部署。
 
 `@qui-theme/ui/regions` 提供 `QuiDistrict` 类型和异步 `loadRegions()`；仅使用时才请求地区 JSON。按钮通过 `nativeType="submit"` 或 `nativeType="reset"` 参与表单，默认是 `button`。图标 JSON 按组加载；加载失败后可通过组件模板引用的 `retry()` 重试。

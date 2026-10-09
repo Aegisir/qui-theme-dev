@@ -116,13 +116,14 @@ test('gallery supports subdirectory, keyboard navigation and route cancellation'
     assert.deepEqual(errors, [])
   } finally { await page.close() }
 })
-for (const colorScheme of ['light', 'dark']) test(`theme messages match the reference under ${colorScheme} system preference`, async () => {
+for (const colorScheme of ['light', 'dark']) test(`theme messages preserve the reference protocol under ${colorScheme} system preference`, async () => {
   const page = await chrome.newPage({ viewport: { width: 390, height: 844 }, colorScheme })
   const background = () => page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor)
   const saved = () => page.evaluate(() => localStorage.getItem('qui_themeId'))
   try {
     await page.goto(gallery.url + '#/index'); await page.waitForLoadState('networkidle')
-    assert.equal(await background(), 'rgb(240, 240, 242)', 'default theme stays light')
+    const initial = colorScheme === 'dark' ? 'rgb(15, 15, 18)' : 'rgb(240, 240, 242)'
+    assert.equal(await background(), initial, 'default theme follows the system')
     await page.evaluate(() => document.body.classList.add('unrelated'))
     await setTheme(page, 'dark')
     assert.equal(await background(), 'rgb(15, 15, 18)')
@@ -146,9 +147,54 @@ for (const colorScheme of ['light', 'dark']) test(`theme messages match the refe
     assert.equal(await page.locator('body').getAttribute('class'), 'unrelated')
     await setTheme(page, 'dark')
     await page.reload(); await page.waitForLoadState('networkidle')
-    assert.equal(await background(), 'rgb(240, 240, 242)', 'demo reload returns to default, as on the reference')
+    assert.equal(await background(), initial, 'reload returns to the system theme')
     assert.equal(await saved(), 'dark')
   } finally { await page.close() }
+})
+
+for (const colorScheme of ['light', 'dark']) test(`system theme controls the first frame and navigation switch in ${colorScheme} mode`, async () => {
+  const page = await chrome.newPage({ viewport: { width: 390, height: 844 }, colorScheme, isMobile: true, hasTouch: true })
+  const initialDark = colorScheme === 'dark'
+  const initial = initialDark ? 'rgb(15, 15, 18)' : 'rgb(240, 240, 242)'
+  const toggle = page.getByRole('switch', { name: '深色模式', exact: true })
+  const checked = () => toggle.getAttribute('aria-checked')
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  await page.route('**/assets/index-*.js', async route => { await gate; await route.continue() })
+  try {
+    await page.goto(gallery.url + '#/index', { waitUntil: 'commit' })
+    await page.waitForSelector('body', { state: 'attached' })
+    assert.equal(await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor), initial, 'theme is applied before the entry module arrives')
+    release()
+    await toggle.waitFor({ state: 'visible', timeout: 3000 }); await page.waitForLoadState('networkidle')
+    assert.equal(await checked(), String(initialDark))
+    const color = page.getByRole('link', { name: '色彩 Color', exact: true })
+    assert.ok((await toggle.boundingBox()).y < (await color.boundingBox()).y)
+    await page.evaluate(() => { window.themeProbe = { root: document.querySelector('.container'), links: [...document.querySelectorAll('.q-list[role="link"]')], requests: performance.getEntriesByType('resource').length } })
+    await page.emulateMedia({ colorScheme: initialDark ? 'light' : 'dark' })
+    await page.waitForFunction(value => document.querySelector('[data-qui-theme] [role="switch"]')?.getAttribute('aria-checked') === value, String(!initialDark))
+    await toggle.focus(); await page.keyboard.press('Space')
+    assert.equal(await checked(), String(initialDark))
+    await page.emulateMedia({ colorScheme }); await page.emulateMedia({ colorScheme: initialDark ? 'light' : 'dark' })
+    await page.waitForTimeout(60)
+    assert.equal(await checked(), String(initialDark), 'manual selection takes precedence for this session')
+    assert.equal(await page.locator('body').evaluate(body => getComputedStyle(body).backgroundColor), initial)
+    assert.deepEqual(await page.evaluate(() => ({ root: window.themeProbe.root === document.querySelector('.container'), links: window.themeProbe.links.every(link => link.isConnected), requests: performance.getEntriesByType('resource').length - window.themeProbe.requests })), { root: true, links: true, requests: 0 })
+    await page.keyboard.press('Enter')
+    assert.equal(await checked(), String(!initialDark))
+    await page.getByText('深色模式', { exact: true }).tap()
+    await page.getByRole('link', { name: '按钮 Button', exact: true }).click()
+    await page.waitForFunction(() => document.title === '按钮 Button' && document.querySelector('.container button'))
+    await page.evaluate(() => { location.hash = '#/index' })
+    await toggle.waitFor({ state: 'visible' })
+    assert.equal(await checked(), String(initialDark), 'navigation keeps the manual selection')
+    await page.setViewportSize({ width: 1280, height: 844 }); await page.waitForLoadState('networkidle')
+    await toggle.waitFor({ state: 'visible' })
+    assert.equal(await toggle.count(), 1)
+    assert.equal(await checked(), String(initialDark))
+    await page.reload(); await toggle.waitFor({ state: 'visible' })
+    assert.equal(await checked(), String(!initialDark), 'reload resumes following the current system preference')
+  } finally { release(); await page.close() }
 })
 
 for (const colorScheme of ['light', 'dark']) for (const slower of ['html', 'css']) {

@@ -81,7 +81,7 @@ export async function prepareReference() {
     routes[slug] = {}
     for (const [key, variant] of Object.entries(variants)) {
       const original = gunzipSync(await readFile(resolve(input, variant.html.replace('/reference/', '')))).toString()
-      const base = await markup(original)
+      const base = await markup(slug === 'index' ? original.replace('<div class="q-list-group">', '<div data-qui-theme></div><div class="q-list-group">') : original)
       const compact = {}
       for (const [name, state] of Object.entries(states[key] || {})) {
         const content = await markup(state.markup)
@@ -97,6 +97,9 @@ export async function prepareReference() {
   }
   const lists = Object.values(routes).flatMap(variants => Object.values(variants).map(variant => variant.styles))
   const commonStyles = lists[0].filter((path, index) => lists.every(styles => styles[index] === path && styles.slice(0, index).every((style, i) => style === lists[0][i])))
+  // Shared theme tokens must also precede the first paint; route CSS is inserted before them.
+  const themeStyle = stylePaths.get('/reference/styles/token.css')
+  if (themeStyle && lists.every(styles => styles.at(-1) === themeStyle)) commonStyles.push(themeStyle)
   const manifest = { routes, commonStyles }
   await writeFile(resolve(cache, 'manifest.json'), JSON.stringify(manifest))
   await writeFile(resolve(output, 'favicon.ico'), await readFile(resolve(root, 'apps/demo/public/favicon.ico')))

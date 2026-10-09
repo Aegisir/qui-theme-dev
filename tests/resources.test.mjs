@@ -30,7 +30,8 @@ test('all 39 routes and interaction snapshots preserve content, portals and scro
     const states = JSON.parse(await readFile(resolve(input, `states/${slug}.json`)).catch(() => '{}'))
     for (const [device, original] of Object.entries(variants)) {
       const page = manifest.routes[slug][device]
-      const markup = await normalize(gunzipSync(await readFile(resolve(input, original.html.replace('/reference/', '')))).toString())
+      const source = gunzipSync(await readFile(resolve(input, original.html.replace('/reference/', '')))).toString()
+      const markup = await normalize(slug === 'index' ? source.replace('<div class="q-list-group">', '<div data-qui-theme></div><div class="q-list-group">') : source)
       assert.equal(await readFile(resolve(generated, page.html), 'utf8'), markup, `${slug}/${device}`)
       const compact = page.states ? JSON.parse(await readFile(resolve(generated, page.states))) : {}
       assert.deepEqual(Object.keys(compact), Object.keys(states[device] ?? {}))

@@ -12,9 +12,10 @@ const props = defineProps<{ slug: string }>()
 const baseMarkup = ref('')
 const markup = ref('')
 const portalMarkup = ref('')
+const themeTarget = shallowRef<HTMLElement | null>(null)
 const interactions = shallowRef<InteractionMap>({})
 const motions = shallowRef<MotionManifest>({ routes: {} })
-const baseBodyStyle = ref('')
+const baseBodyStyle = ref(document.body.getAttribute('style') ?? '')
 const narrow = ref(window.innerWidth < 600)
 const variantKey = computed(() => narrow.value ? 'mobile' : 'desktop')
 const error = ref('')
@@ -104,16 +105,17 @@ async function loadPage() {
   activeInteraction = ''; authorizationReturnInteraction = ''; portalMarkup.value = ''
   interactions.value = {}; motions.value = { routes: {} }
   if (/Windows/i.test(navigator.userAgent)) document.documentElement.classList.add('is-win')
-  document.body.style.background = 'var(--bg_bottom_standard, #f5f6fa)'
   baseBodyStyle.value = document.body.getAttribute('style') ?? ''
   try {
     const bodyReady = Promise.all([loadMarkup(page, signal), prepareStyles(page.styles, signal)]).then(async ([html, commitStyles]) => {
       if (version !== loading) return
       // Commit CSS and markup before the next paint, keeping the previous page intact while loading.
+      themeTarget.value = null
       commitStyles(); rendered = version
       document.title = entries.find(entry => entry.slug === slug)?.title ?? 'Web 组件库'
       baseMarkup.value = html; markup.value = html; busy.value = false
       await nextTick()
+      if (version === loading) themeTarget.value = document.querySelector('[data-qui-theme]')
     })
     const runtime = startRuntime(version, slug, device, signal, bodyReady)
     await bodyReady
@@ -397,4 +399,5 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="error" role="alert">{{ error }} <button type="button" @click="loadPage">重试</button></div>
   <QuiReplicaRenderer :markup="markup" :portals="portalMarkup" :aria-busy="busy" @click="onClick" @input="onInput" @change="onChange" />
+  <Teleport v-if="themeTarget" :to="themeTarget"><slot name="theme" /></Teleport>
 </template>
